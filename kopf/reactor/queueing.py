@@ -34,7 +34,7 @@ import kubernetes.watch
 from kopf.reactor.handling import custom_object_handler
 from kopf.reactor.lifecycles import get_default_lifecycle
 from kopf.reactor.peering import peers_keepalive, peers_handler, Peer, detect_own_id
-from kopf.reactor.peering import PEERING_CRD_RESOURCE, PEERING_DEFAULT_NAME
+from kopf.reactor.peering import CLUSTER_PEERING_RESOURCE, NAMESPACED_PEERING_RESOURCE, PEERING_DEFAULT_NAME
 from kopf.reactor.registry import get_default_registry, BaseRegistry, Resource
 from kopf.reactor.watching import streaming_aiter
 
@@ -184,6 +184,7 @@ def create_tasks(
 
     # Monitor the peers, unless explicitly disabled.
     if not standalone:
+        resource = CLUSTER_PEERING_RESOURCE if namespace is None else NAMESPACED_PEERING_RESOURCE
         ourselves = Peer(
             id=detect_own_id(),
             priority=priority,
@@ -192,8 +193,8 @@ def create_tasks(
         )
         tasks.extend([
             asyncio.Task(peers_keepalive(ourselves=ourselves)),
-            asyncio.Task(watcher(namespace=None,  # peering is cluster-object
-                                 resource=PEERING_CRD_RESOURCE,
+            asyncio.Task(watcher(namespace=namespace,
+                                 resource=resource,
                                  handler=functools.partial(peers_handler,
                                                            ourselves=ourselves,
                                                            freeze=freeze))),  # freeze is set/cleared
